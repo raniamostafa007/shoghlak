@@ -1,0 +1,301 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { supabase } from '../../lib/supabase';
+import { formatDate, isExpired, makeSlug } from '../../lib/utils';
+
+const EMPTY = {
+  title: '',
+  slug: '',
+  company_name: '',
+  company_logo: '',
+  cover_image: '',
+  city: '',
+  qualification: '',
+  category: '',
+  jobs_count: '',
+  description: '',
+  requirements: '',
+  application_type: 'Website',
+  application_url: '',
+  application_email: '',
+  application_whatsapp: '',
+  interview_address: '',
+  interview_date: '',
+  other_instructions: '',
+  expires_date: '',
+  status: 'published',
+};
+
+const nullIfEmpty = (v) => (typeof v === 'string' && v.trim() === '' ? null : v);
+
+function toForm(job) {
+  const f = { ...EMPTY };
+  Object.keys(EMPTY).forEach((k) => {
+    if (job[k] !== undefined && job[k] !== null) f[k] = String(job[k]);
+  });
+  f.expires_date = job.expires_at ? new Date(job.expires_at).toLocaleDateString('en-CA') : '';
+  return f;
+}
+
+export default function AdminPage() {
+  const [session, setSession] = useState(undefined); // undefined = loading
+  const [jobs, setJobs] = useState([]);
+  const [form, setForm] = useState(null); // null = list view
+  const [editingId, setEditingId] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session || null));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s || null));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (session) loadJobs();
+  }, [session]);
+
+  async function loadJobs() {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) setMsg({ type: 'err', text: 'مشكلة في تحميل الوظائف: ' + error.message });
+    else setJobs(data || []);
+  }
+
+  if (session === undefined) {
+    return <div className="container"><p style={{ padding: 40 }}>جاري التحميل...</p></div>;
+  }
+
+  if (!session) return <Login />;
+
+  function startNew() {
+    setEditingId(null);
+    setForm({ ...EMPTY });
+    setMsg(null);
+    window.scrollTo(0, 0);
+  }
+
+  function startEdit(job) {
+    setEditingId(job.id);
+    setForm(toForm(job));
+    setMsg(null);
+    window.scrollTo(0, 0);
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    if (!form.title.trim() || !form.company_name.trim()) {
+      setMsg({ type: 'err', text: 'اكتبي عنوان الوظيفة واسم الشركة على الأقل.' });
+      return;
+    }
+    setSaving(true);
+    setMsg(null);
+
+    const payload = {
+      title: form.title.trim(),
+      slug: form.slug.trim() ? form.slug.trim().replace(/\s+/g, '-') : makeSlug(form.title),
+      company_name: form.company_name.trim(),
+      company_logo: nullIfEmpty(form.company_logo),
+      cover_image: nullIfEmpty(form.cover_image),
+      city: nullIfEmpty(form.city),
+      qualification: nullIfEmpty(form.qualification),
+      category: nullIfEmpty(form.category),
+      jobs_count: form.jobs_count.trim() ? parseInt(form.jobs_count, 10) || null : null,
+      description: nullIfEmpty(form.description),
+      requirements: nullIfEmpty(form.requirements),
+      application_type: form.application_type,
+      application_url: nullIfEmpty(form.application_url),
+      application_email: nullIfEmpty(form.application_email),
+      application_whatsapp: nullIfEmpty(form.application_whatsapp),
+      interview_address: nullIfEmpty(form.interview_address),
+      interview_date: nullIfEmpty(form.interview_date),
+      other_instructions: nullIfEmpty(form.other_instructions),
+      expires_at: form.expires_date ? new Date(form.expires_date + 'T23:59:59').toISOString() : null,
+      status: form.status,
+    };
+
+    let error;
+    if (editingId) {
+      ({ error } = await supabase
+        .from('jobs')
+        .update({ ...payload, updated_at: new Date().toISOString() })
+        .eq('id', editingId));
+    } else {
+      ({ error } = await supabase.from('jobs').insert(payload));
+    }
+
+    setSaving(false);
+    if (error) {
+      const dup = error.message.includes('duplicate') || error.code === '23505';
+      setMsg({ type: 'err', text: dup ? 'الرابط (slug) ده مستخدم قبل كده، غيريه أو سيبيه فاضي.' : 'حصلت مشكلة: ' + error.message });
+      return;
+    }
+    setForm(null);
+    setEditingId(null);
+    setMsg({ type: 'good', text: editingId ? 'تم حفظ التعديلات ✓' : 'تم نشر الوظيفة ✓' });
+    loadJobs();
+  }
+
+  async function toggleStatus(job) {
+    const next = job.status === 'published' ? 'hidden' : 'published';
+    const { error } = await supabase.from('jobs').update({ status: next, updated_at: new Date().toISOString() }).eq('id', job.id);
+    if (error) setMsg({ type: 'err', text: error.message });
+    else loadJobs();
+  }
+
+  async function remove(job) {
+    if (!window.confirm('متأكدة إنك عايزة تحذفي الوظيفة دي نهائيًا؟')) return;
+    const { error } = await supabase.from('jobs').delete().eq('id', job.id);
+    if (error) setMsg({ type: 'err', text: error.message });
+    else loadJobs();
+  }
+
+  function set(field) {
+    return (e) => setForm({ ...form, [field]: e.target.value });
+  }
+
+  return (
+    <div className="container">
+      <div className="admin-card">
+        <div className="bar">
+          <h2 style={{ margin: 0 }}>لوحة التحكم</h2>
+          <div className="actions">
+            {!form ? <button className="btn btn-sm" onClick={startNew}>+ إضافة وظيفة</button> : null}
+            <button className="btn btn-sm btn-ghost" onClick={() => supabase.auth.signOut()}>تسجيل خروج</button>
+          </div>
+        </div>
+
+        {msg ? <div className={`msg ${msg.type}`}>{msg.text}</div> : null}
+
+        {form ? (
+          <form onSubmit={save}>
+            <h2>{editingId ? 'تعديل وظيفة' : 'إضافة وظيفة جديدة'}</h2>
+            <div className="form-grid">
+              <div className="field full"><label>عنوان الوظيفة *</label><input value={form.title} onChange={set('title')} placeholder="مثال: 23 وظيفة شاغرة في شركة ترشيد" /></div>
+              <div className="field"><label>اسم الشركة / الجهة *</label><input value={form.company_name} onChange={set('company_name')} /></div>
+              <div className="field"><label>المدينة</label><input value={form.city} onChange={set('city')} placeholder="مثال: القاهرة" /></div>
+              <div className="field"><label>المؤهل</label><input value={form.qualification} onChange={set('qualification')} placeholder="مثال: بكالوريوس فأعلى" /></div>
+              <div className="field"><label>المجال / التصنيف</label><input value={form.category} onChange={set('category')} placeholder="مثال: إدارية - هندسية" /></div>
+              <div className="field"><label>عدد الوظائف</label><input inputMode="numeric" value={form.jobs_count} onChange={set('jobs_count')} /></div>
+              <div className="field"><label>آخر موعد للتقديم (اختياري)</label><input type="date" value={form.expires_date} onChange={set('expires_date')} /></div>
+              <div className="field full"><label>تفاصيل الوظيفة</label><textarea value={form.description} onChange={set('description')} /></div>
+              <div className="field full"><label>الشروط والمتطلبات</label><textarea value={form.requirements} onChange={set('requirements')} /></div>
+              <div className="field"><label>رابط شعار الشركة (اختياري)</label><input dir="ltr" value={form.company_logo} onChange={set('company_logo')} placeholder="https://..." /></div>
+              <div className="field"><label>رابط صورة الإعلان (اختياري)</label><input dir="ltr" value={form.cover_image} onChange={set('cover_image')} placeholder="https://..." /></div>
+            </div>
+
+            <div className="field">
+              <label>طريقة التقديم</label>
+              <select value={form.application_type} onChange={set('application_type')}>
+                <option value="Website">رابط موقع إلكتروني</option>
+                <option value="Email">بريد إلكتروني</option>
+                <option value="WhatsApp">واتساب</option>
+                <option value="Interview">مقابلة شخصية</option>
+                <option value="Other">طريقة أخرى</option>
+              </select>
+            </div>
+
+            <div className="apply-fields">
+              {form.application_type === 'Website' && (
+                <div className="field" style={{ margin: 0 }}><label>رابط التقديم</label><input dir="ltr" value={form.application_url} onChange={set('application_url')} placeholder="https://..." /></div>
+              )}
+              {form.application_type === 'Email' && (
+                <div className="field" style={{ margin: 0 }}><label>البريد الإلكتروني</label><input dir="ltr" value={form.application_email} onChange={set('application_email')} placeholder="jobs@company.com" /></div>
+              )}
+              {form.application_type === 'WhatsApp' && (
+                <div className="field" style={{ margin: 0 }}><label>رقم الواتساب (بالكود الدولي)</label><input dir="ltr" value={form.application_whatsapp} onChange={set('application_whatsapp')} placeholder="201000000000" /></div>
+              )}
+              {form.application_type === 'Interview' && (
+                <div className="form-grid">
+                  <div className="field"><label>مكان المقابلة</label><input value={form.interview_address} onChange={set('interview_address')} /></div>
+                  <div className="field"><label>التاريخ والساعة</label><input value={form.interview_date} onChange={set('interview_date')} placeholder="مثال: الأحد 4 أكتوبر - 10 ص" /></div>
+                  <div className="field full" style={{ margin: 0 }}><label>ملاحظات / رقم تواصل (اختياري)</label><textarea value={form.other_instructions} onChange={set('other_instructions')} /></div>
+                </div>
+              )}
+              {form.application_type === 'Other' && (
+                <div className="field" style={{ margin: 0 }}><label>اشرحي طريقة التقديم</label><textarea value={form.other_instructions} onChange={set('other_instructions')} /></div>
+              )}
+            </div>
+
+            <div className="form-grid">
+              <div className="field">
+                <label>الحالة</label>
+                <select value={form.status} onChange={set('status')}>
+                  <option value="published">منشورة</option>
+                  <option value="hidden">مخفية</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>الرابط (slug) - اتركيه فاضي وهيتعمل تلقائي</label>
+                <input dir="ltr" value={form.slug} onChange={set('slug')} placeholder="مثال: tarsheed-jobs" />
+              </div>
+            </div>
+
+            <div className="actions">
+              <button className="btn btn-sm" type="submit" disabled={saving}>{saving ? 'جاري الحفظ...' : editingId ? 'حفظ التعديلات' : 'نشر الوظيفة'}</button>
+              <button className="btn btn-sm btn-ghost" type="button" onClick={() => { setForm(null); setEditingId(null); setMsg(null); }}>إلغاء</button>
+            </div>
+          </form>
+        ) : (
+          <>
+            <div style={{ color: 'var(--muted)', fontSize: 14, marginBottom: 10 }}>كل الوظائف ({jobs.length})</div>
+            {jobs.length === 0 ? <div className="empty" style={{ marginBottom: 0 }}><h3>لسه مفيش وظائف</h3><p>دوسي "إضافة وظيفة" وابدئي.</p></div> : null}
+            {jobs.map((job) => {
+              const expired = isExpired(job);
+              const hidden = job.status !== 'published';
+              return (
+                <div className="row" key={job.id}>
+                  <div>
+                    <div className="t">{job.title}</div>
+                    <div className="s">{job.company_name} — {formatDate(job.published_at)}</div>
+                  </div>
+                  <div className="actions">
+                    <span className={`pill ${hidden ? 'off' : expired ? 'exp' : 'ok'}`}>{hidden ? 'مخفية' : expired ? 'منتهية' : 'منشورة'}</span>
+                    <Link className="mini" href={`/jobs/${job.slug}`} target="_blank">عرض</Link>
+                    <button className="mini" onClick={() => startEdit(job)}>تعديل</button>
+                    <button className="mini" onClick={() => toggleStatus(job)}>{hidden ? 'إظهار' : 'إخفاء'}</button>
+                    <button className="mini danger" onClick={() => remove(job)}>حذف</button>
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e) {
+    e.preventDefault();
+    setBusy(true);
+    setErr('');
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setBusy(false);
+    if (error) setErr('الإيميل أو الباسورد غلط.');
+  }
+
+  return (
+    <div className="container">
+      <div className="admin-card login-box">
+        <h2>تسجيل الدخول</h2>
+        {err ? <div className="msg err">{err}</div> : null}
+        <form onSubmit={submit}>
+          <div className="field"><label>البريد الإلكتروني</label><input type="email" dir="ltr" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+          <div className="field"><label>كلمة المرور</label><input type="password" dir="ltr" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
+          <button className="btn btn-sm" type="submit" disabled={busy}>{busy ? 'جاري الدخول...' : 'دخول'}</button>
+        </form>
+      </div>
+    </div>
+  );
+}
