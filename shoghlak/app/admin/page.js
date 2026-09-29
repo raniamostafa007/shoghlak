@@ -184,8 +184,8 @@ export default function AdminPage() {
               <div className="field"><label>آخر موعد للتقديم (اختياري)</label><input type="date" value={form.expires_date} onChange={set('expires_date')} /></div>
               <div className="field full"><label>تفاصيل الوظيفة</label><textarea value={form.description} onChange={set('description')} /></div>
               <div className="field full"><label>الشروط والمتطلبات</label><textarea value={form.requirements} onChange={set('requirements')} /></div>
-              <div className="field"><label>رابط شعار الشركة (اختياري)</label><input dir="ltr" value={form.company_logo} onChange={set('company_logo')} placeholder="https://..." /></div>
-              <div className="field"><label>رابط صورة الإعلان (اختياري)</label><input dir="ltr" value={form.cover_image} onChange={set('cover_image')} placeholder="https://..." /></div>
+              <ImageField label="شعار الشركة (اختياري)" mode="logo" value={form.company_logo} onChange={(v) => setForm((f) => ({ ...f, company_logo: v }))} />
+              <ImageField label="صورة الإعلان (اختياري)" mode="cover" value={form.cover_image} onChange={(v) => setForm((f) => ({ ...f, cover_image: v }))} />
             </div>
 
             <div className="field">
@@ -296,6 +296,103 @@ function Login() {
           <button className="btn btn-sm" type="submit" disabled={busy}>{busy ? 'جاري الدخول...' : 'دخول'}</button>
         </form>
       </div>
+    </div>
+  );
+}
+
+const BUCKET = 'job-images';
+
+async function resizeImage(file, mode) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (mode === 'logo') {
+      // مربع 256x256 والصورة في النص بدون ما تتقص
+      const size = 256;
+      canvas.width = size;
+      canvas.height = size;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+      const scale = Math.min((size * 0.88) / img.width, (size * 0.88) / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+    } else {
+      const scale = Math.min(1, 1000 / img.width);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    }
+
+    return await new Promise((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('تعذر تجهيز الصورة'))), 'image/jpeg', 0.88)
+    );
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function ImageField({ label, value, onChange, mode }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  async function handleFile(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErr('اختاري ملف صورة (JPG أو PNG).');
+      return;
+    }
+    setBusy(true);
+    setErr('');
+    try {
+      const blob = await resizeImage(file, mode);
+      const path = `${mode}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+      const { error } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
+      if (error) throw error;
+      const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+      onChange(data.publicUrl);
+    } catch (ex) {
+      setErr('فشل رفع الصورة: ' + (ex.message || 'حاولي تاني'));
+    } finally {
+      setBusy(false);
+      e.target.value = '';
+    }
+  }
+
+  return (
+    <div className="field">
+      <label>{label}</label>
+      {value ? (
+        <div style={{ marginBottom: 8 }}>
+          <img
+            src={value}
+            alt=""
+            style={{
+              display: 'block',
+              maxWidth: mode === 'logo' ? 72 : 240,
+              maxHeight: mode === 'logo' ? 72 : 160,
+              borderRadius: 10,
+              border: '1px solid var(--line)',
+              marginBottom: 6,
+            }}
+          />
+          <button type="button" className="mini danger" onClick={() => onChange('')}>حذف الصورة</button>
+        </div>
+      ) : null}
+      <input type="file" accept="image/*" onChange={handleFile} disabled={busy} />
+      {busy ? <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>جاري رفع الصورة...</div> : null}
+      {err ? <div className="msg err" style={{ marginTop: 8, marginBottom: 0 }}>{err}</div> : null}
     </div>
   );
 }
