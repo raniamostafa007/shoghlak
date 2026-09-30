@@ -1,220 +1,45 @@
-import { SITE } from '../../lib/site';
+import { getActiveJobs } from '../lib/jobs';
+import { todayLabel } from '../lib/utils';
+import JobsBrowser from '../components/JobsBrowser';
 
-export const metadata = {
-  title: 'سياسة الخصوصية',
-  description:
-    'سياسة الخصوصية لموقع شغلك عندنا واستخدام بيانات الزيارات والروابط الخارجية.',
-};
+// تحميل الوظائف حسب رقم الصفحة وكلمة البحث.
+export const dynamic = 'force-dynamic';
 
-export default function PrivacyPage() {
+export default async function HomePage({ searchParams }) {
+  const pageValue = searchParams?.page;
+  const searchValue = searchParams?.q;
+
+  const page = Array.isArray(pageValue)
+    ? pageValue[0]
+    : pageValue;
+
+  const search = Array.isArray(searchValue)
+    ? searchValue[0]
+    : searchValue || '';
+
+  const {
+    jobs,
+    failed,
+    total,
+    totalPages,
+    currentPage,
+    pageSize,
+  } = await getActiveJobs({
+    page: page || 1,
+    search,
+  });
+
   return (
-    <div className="container">
-      <article
-        className="detail"
-        style={{
-          marginTop: 26,
-          marginBottom: 50,
-          fontSize: 16,
-          lineHeight: 1.9,
-        }}
-      >
-        <h1>سياسة الخصوصية</h1>
-
-        <p style={{ color: 'var(--muted)' }}>
-          آخر تحديث: 30 سبتمبر 2026
-        </p>
-
-        <p>
-          نحترم خصوصيتك في {SITE.name}. توضح هذه السياسة
-          البيانات المستخدمة عند تصفح الموقع، والغرض منها،
-          والخدمات الخارجية المرتبطة به.
-        </p>
-
-        <h2 className="block-title">
-          تصفح الوظائف والتقديم
-        </h2>
-
-        <p>
-          يمكنك تصفح الوظائف دون إنشاء حساب. لا يوفر الموقع
-          حاليًا رفع السير الذاتية أو إرسال طلبات التوظيف
-          داخل الموقع، ولا يطلب اسمك أو رقم هاتفك أو بريدك
-          الإلكتروني لتصفح الإعلانات.
-        </p>
-
-        <p>
-          يتم التقديم من خلال وسائل التواصل أو المواقع
-          الموضحة في الإعلان. أي بيانات ترسلها إلى جهة
-          التوظيف تخضع لسياسة الخصوصية الخاصة بتلك الجهة.
-        </p>
-
-        <h2 className="block-title">
-          عداد الزوار اليومي
-        </h2>
-
-        <p>
-          نستخدم عدادًا لمعرفة عدد المتصفحات التي تزور الموقع
-          يوميًا. عند الزيارة، يتم إنشاء معرّف عشوائي وتخزينه
-          في متصفحك باستخدام التخزين المحلي (Local Storage).
-          نحتفظ بهذا المعرّف مع تاريخ الزيارة في قاعدة بيانات
-          Supabase لمنع احتساب المتصفح نفسه أكثر من مرة خلال
-          اليوم.
-        </p>
-
-        <p>
-          لا يتضمن سجل العداد اسمك أو بريدك الإلكتروني أو
-          رقم هاتفك أو عنوان IP، ولا يسجل الصفحات التي
-          تصفحتها. الرقم اليومي متاح لحساب إدارة الموقع
-          المصرح له فقط.
-        </p>
-
-        <p>
-          لا تُحذف سجلات الزيارات تلقائيًا عند بدء يوم جديد؛
-          يعرض العداد سجلات اليوم الحالي فقط. يظل المعرّف
-          المحلي في متصفحك حتى تمسح بيانات الموقع أو يزيله
-          المتصفح. مسح هذه البيانات قد يؤدي إلى احتساب
-          المتصفح كزائر جديد.
-        </p>
-
-        <h2 className="block-title">
-          الاستضافة وقاعدة البيانات
-        </h2>
-
-        <p>
-          يستخدم الموقع Vercel للاستضافة وSupabase لتخزين
-          بيانات الوظائف وإحصاءات الزيارات وإدارة تسجيل
-          دخول المسؤولين. قد تعالج هذه الخدمات بيانات
-          تقنية، مثل عنوان IP ومعلومات الطلب والمتصفح،
-          لتشغيل الخدمة وحمايتها، وفقًا لسياسات الخصوصية
-          الخاصة بها.
-        </p>
-
-        <p>
-          يمكنك الاطلاع على سياسات هذه الخدمات:
-        </p>
-
-        <ul>
-          <li>
-            <a
-              href="https://vercel.com/legal/privacy-policy"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              سياسة خصوصية Vercel
-            </a>
-          </li>
-
-          <li>
-            <a
-              href="https://supabase.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              سياسة خصوصية Supabase
-            </a>
-          </li>
-        </ul>
-
-        <h2 className="block-title">
-          الإعلانات وملفات تعريف الارتباط
-        </h2>
-
-        <p>
-          لا توجد إعلانات Google AdSense مفعلة حاليًا
-          في الموقع. عند تفعيلها، قد تستخدم Google
-          ومزودو الإعلانات الآخرون ملفات تعريف الارتباط
-          ومعرّفات وبيانات تقنية لعرض الإعلانات وقياس
-          أدائها ومنع الاحتيال.
-        </p>
-
-        <p>
-          قد تستخدم Google ملفات تعريف ارتباط الإعلانات
-          لتقديم إعلانات مخصصة بناءً على زياراتك لهذا
-          الموقع أو مواقع أخرى. يمكنك إدارة تخصيص
-          إعلانات Google من خلال{' '}
-          <a
-            href="https://myadcenter.google.com/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            مركز إدارة الإعلانات
-          </a>
-          ، ومعرفة المزيد من خلال{' '}
-          <a
-            href="https://policies.google.com/technologies/partner-sites"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            توضيح Google لاستخدام البيانات في مواقع شركائها
-          </a>
-          .
-        </p>
-
-        <p>
-          سنحدّث هذه السياسة عند تفعيل الإعلانات أو إضافة
-          أدوات تحليل جديدة، ونوفر خيارات الموافقة
-          المطلوبة حسب المناطق التي تُعرض فيها الإعلانات.
-        </p>
-
-        <h2 className="block-title">
-          الروابط الخارجية
-        </h2>
-
-        <p>
-          قد تحتوي إعلانات الوظائف على روابط لمواقع
-          الشركات أو خدمات مثل واتساب والبريد الإلكتروني.
-          عند استخدام هذه الروابط، قد تتلقى الخدمة الخارجية
-          بيانات وفقًا لطريقة عملها وسياسة الخصوصية الخاصة
-          بها. ننصح بمراجعة سياسة الجهة قبل إرسال بياناتك.
-        </p>
-
-        <h2 className="block-title">
-          التواصل عبر البريد الإلكتروني
-        </h2>
-
-        <p>
-          إذا تواصلت معنا، نتلقى عنوان بريدك ومحتوى رسالتك
-          وأي مرفقات ترسلها، ونستخدمها لمعالجة الاستفسار
-          والرد عليك. يُرجى عدم إرسال كلمات المرور أو
-          المستندات الحساسة غير اللازمة للاستفسار.
-        </p>
-
-        <h2 className="block-title">
-          التحكم في بيانات المتصفح
-        </h2>
-
-        <p>
-          يمكنك مسح بيانات الموقع والتخزين المحلي من
-          إعدادات متصفحك. قد يتوقف عداد الزيارات عن العمل
-          إذا منع المتصفح التخزين المحلي، لكن يمكنك
-          الاستمرار في تصفح الوظائف.
-        </p>
-
-        <h2 className="block-title">
-          تحديث السياسة
-        </h2>
-
-        <p>
-          نحدّث هذه السياسة عند تغيير طريقة معالجة البيانات
-          أو الخدمات المستخدمة، ونوضح تاريخ آخر تحديث
-          أعلى الصفحة.
-        </p>
-
-        <h2 className="block-title">
-          استفسارات الخصوصية
-        </h2>
-
-        <p>
-          للاستفسار عن هذه السياسة أو تقديم طلب متعلق
-          ببياناتك، تواصل معنا عبر:
-        </p>
-
-        <a
-          href="mailto:shoghlak2026@gmail.com"
-          style={{ overflowWrap: 'anywhere' }}
-        >
-          shoghlak2026@gmail.com
-        </a>
-      </article>
-    </div>
+    <JobsBrowser
+      key={`${currentPage}-${search}`}
+      jobs={jobs}
+      failed={failed}
+      dateText={todayLabel()}
+      total={total}
+      totalPages={totalPages}
+      currentPage={currentPage}
+      pageSize={pageSize}
+      search={search}
+    />
   );
 }
