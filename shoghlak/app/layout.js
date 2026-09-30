@@ -2,6 +2,7 @@ import './globals.css';
 import { Cairo } from 'next/font/google';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
+import VisitorTracker from '../components/VisitorTracker';
 import { SITE } from '../lib/site';
 
 const cairo = Cairo({
@@ -11,7 +12,10 @@ const cairo = Cairo({
 });
 
 export const metadata = {
-  title: { default: `${SITE.name} | ${SITE.tagline}`, template: `%s | ${SITE.name}` },
+  title: {
+    default: `${SITE.name} | ${SITE.tagline}`,
+    template: `%s | ${SITE.name}`,
+  },
   description: SITE.description,
 };
 
@@ -19,6 +23,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="ar" dir="rtl">
       <body className={cairo.className}>
+        <VisitorTracker />
         <Header />
         <main>{children}</main>
         <Footer />
