@@ -31,12 +31,6 @@ export default function JobsBrowser({ jobs, failed, dateText }) {
           <h1>وظائف <span>وفرص عمل</span> يوميًا</h1>
           <p className="sub">{SITE.description}</p>
 
-          <div className="hero-stats">
-            <span className="hero-stat">📋 {jobs.length} وظيفة منشورة</span>
-            {companiesCount > 0 ? <span className="hero-stat">🏢 {companiesCount} جهة توظيف</span> : null}
-            <span className="hero-stat">✅ التقديم مجاني تمامًا</span>
-          </div>
-
           <div className="search-wrap">
             <input
               type="search"
@@ -45,7 +39,7 @@ export default function JobsBrowser({ jobs, failed, dateText }) {
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
-          <p className="sub" style={{ fontWeight: 500, fontSize: 13, marginTop: 8 }}>{dateText}</p>
+          <p className="sub" style={{ fontWeight: 500, fontSize: 13, marginTop: 6 }}>{dateText}</p>
         </div>
       </section>
 
