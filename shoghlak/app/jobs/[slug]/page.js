@@ -1,17 +1,33 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getJobBySlug } from '../../../lib/jobs';
-import { formatDate, isExpired, safeDecode } from '../../../lib/utils';
+import {
+  formatDate,
+  isExpired,
+  getExpiryDate,
+  safeDecode,
+} from '../../../lib/utils';
 import AdSlot from '../../../components/AdSlot';
 
-export const revalidate = 60;
+// قراءة حالة الوظيفة عند كل طلب.
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }) {
-  const job = await getJobBySlug(safeDecode(params.slug));
-  if (!job) return { title: 'وظيفة غير موجودة' };
+  const job = await getJobBySlug(
+    safeDecode(params.slug)
+  );
+
+  if (!job) {
+    return {
+      title: 'وظيفة غير موجودة',
+    };
+  }
+
   return {
     title: job.title,
-    description: `${job.title} - ${job.company_name}${job.city ? ' - ' + job.city : ''}`,
+    description:
+      `${job.title} - ${job.company_name}` +
+      (job.city ? ` - ${job.city}` : ''),
   };
 }
 
@@ -21,10 +37,22 @@ function ApplyBox({ job }) {
   if (type === 'Website' && job.application_url) {
     return (
       <div className="apply-box">
-        <div className="block-title">طريقة التقديم</div>
-        <p>التقديم يتم إلكترونيًا عن طريق الموقع الرسمي للجهة.</p>
-        <a className="btn" href={job.application_url} target="_blank" rel="noopener noreferrer">
-          التقديم على الوظيفة ←
+        <div className="block-title">
+          طريقة التقديم
+        </div>
+
+        <p>
+          التقديم يتم إلكترونيًا عن طريق الموقع
+          الرسمي للجهة.
+        </p>
+
+        <a
+          className="btn"
+          href={job.application_url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          التقديم على الوظيفة
         </a>
       </div>
     );
@@ -33,34 +61,94 @@ function ApplyBox({ job }) {
   if (type === 'Email' && job.application_email) {
     return (
       <div className="apply-box">
-        <div className="block-title">طريقة التقديم</div>
-        <p>أرسلي السيرة الذاتية على البريد الإلكتروني:</p>
-        <p style={{ fontWeight: 800, direction: 'ltr', textAlign: 'right' }}>{job.application_email}</p>
-        <a className="btn" href={`mailto:${job.application_email}`}>إرسال بريد إلكتروني ←</a>
-      </div>
-    );
-  }
+        <div className="block-title">
+          طريقة التقديم
+        </div>
 
-  if (type === 'WhatsApp' && job.application_whatsapp) {
-    const digits = job.application_whatsapp.replace(/[^0-9]/g, '');
-    return (
-      <div className="apply-box">
-        <div className="block-title">طريقة التقديم</div>
-        <p>التقديم عن طريق التواصل على واتساب.</p>
-        <a className="btn btn-green" href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer">
-          التواصل عبر واتساب ←
+        <p>
+          أرسلي السيرة الذاتية على البريد الإلكتروني:
+        </p>
+
+        <p
+          style={{
+            fontWeight: 800,
+            direction: 'ltr',
+            textAlign: 'right',
+          }}
+        >
+          {job.application_email}
+        </p>
+
+        <a
+          className="btn"
+          href={`mailto:${job.application_email}`}
+        >
+          إرسال بريد إلكتروني
         </a>
       </div>
     );
   }
 
-  if (type === 'Interview' && (job.interview_address || job.interview_date)) {
+  if (
+    type === 'WhatsApp' &&
+    job.application_whatsapp
+  ) {
+    const digits = job.application_whatsapp.replace(
+      /[^0-9]/g,
+      ''
+    );
+
     return (
       <div className="apply-box">
-        <div className="block-title">التقديم بالمقابلة الشخصية</div>
-        {job.interview_address ? <p>📍 <b>مكان المقابلة:</b> {job.interview_address}</p> : null}
-        {job.interview_date ? <p>📅 <b>الموعد:</b> {job.interview_date}</p> : null}
-        {job.other_instructions ? <p className="text-block">{job.other_instructions}</p> : null}
+        <div className="block-title">
+          طريقة التقديم
+        </div>
+
+        <p>
+          التقديم عن طريق التواصل على واتساب.
+        </p>
+
+        <a
+          className="btn btn-green"
+          href={`https://wa.me/${digits}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          التواصل عبر واتساب
+        </a>
+      </div>
+    );
+  }
+
+  if (
+    type === 'Interview' &&
+    (job.interview_address || job.interview_date)
+  ) {
+    return (
+      <div className="apply-box">
+        <div className="block-title">
+          التقديم بالمقابلة الشخصية
+        </div>
+
+        {job.interview_address && (
+          <p>
+            📍 <b>مكان المقابلة:</b>{' '}
+            {job.interview_address}
+          </p>
+        )}
+
+        {job.interview_date && (
+          <p>
+            📅 <b>الموعد:</b>{' '}
+            {job.interview_date}
+          </p>
+        )}
+
+        {job.other_instructions && (
+          <p className="text-block">
+            {job.other_instructions}
+          </p>
+        )}
       </div>
     );
   }
@@ -68,8 +156,13 @@ function ApplyBox({ job }) {
   if (job.other_instructions) {
     return (
       <div className="apply-box">
-        <div className="block-title">طريقة التقديم</div>
-        <p className="text-block">{job.other_instructions}</p>
+        <div className="block-title">
+          طريقة التقديم
+        </div>
+
+        <p className="text-block">
+          {job.other_instructions}
+        </p>
       </div>
     );
   }
@@ -78,69 +171,154 @@ function ApplyBox({ job }) {
 }
 
 export default async function JobPage({ params }) {
-  const job = await getJobBySlug(safeDecode(params.slug));
+  const job = await getJobBySlug(
+    safeDecode(params.slug)
+  );
+
+  // بعد حذف الإعلان، الرابط يرجع صفحة 404.
   if (!job) notFound();
 
   const expired = isExpired(job);
+  const expiryDate = getExpiryDate(job);
+
+  // لا تتم إضافة JobPosting structured data هنا،
+  // وبالتالي الإعلان المنتهي لا يعرض Schema لوظيفة نشطة.
 
   return (
     <div className="container">
       <div className="crumbs">
-        <Link href="/">→ رجوع لكل الوظائف</Link>
+        <Link href="/">
+          رجوع لكل الوظائف
+        </Link>
       </div>
 
       <AdSlot id="job-top" />
 
       <article className="detail">
-        {expired ? <div className="warn">⚠️ هذا الإعلان انتهى موعد التقديم عليه.</div> : null}
+        {expired && (
+          <div className="warn" role="status">
+            انتهى التقديم على هذه الوظيفة
+          </div>
+        )}
 
         <div className="detail-head">
           <div className="logo-box">
-            {job.company_logo ? <img src={job.company_logo} alt="" /> : <span>{(job.company_name || '؟').trim()[0]}</span>}
+            {job.company_logo ? (
+              <img
+                src={job.company_logo}
+                alt=""
+              />
+            ) : (
+              <span>
+                {(job.company_name || '؟').trim()[0]}
+              </span>
+            )}
           </div>
+
           <div>
             <h1>{job.title}</h1>
-            <p className="company-line">{job.company_name}</p>
+
+            <p className="company-line">
+              {job.company_name}
+            </p>
           </div>
         </div>
 
-        {job.cover_image ? <img className="cover" src={job.cover_image} alt={job.title} /> : null}
+        {job.cover_image && (
+          <img
+            className="cover"
+            src={job.cover_image}
+            alt={job.title}
+          />
+        )}
 
         <div className="facts">
-          {job.company_name ? <div className="fact"><b>🏢 الشركة</b>{job.company_name}</div> : null}
-          {job.city ? <div className="fact"><b>📍 مكان العمل</b>{job.city}</div> : null}
-          {job.qualification ? <div className="fact"><b>🎓 المؤهل</b>{job.qualification}</div> : null}
-          {job.jobs_count ? <div className="fact"><b>🔢 عدد الوظائف</b>{job.jobs_count}</div> : null}
-          <div className="fact"><b>📅 تاريخ النشر</b>{formatDate(job.published_at)}</div>
-          {job.expires_at ? <div className="fact"><b>⏳ آخر موعد للتقديم</b>{formatDate(job.expires_at)}</div> : null}
+          {job.company_name && (
+            <div className="fact">
+              <b>🏢 الشركة</b>
+              {job.company_name}
+            </div>
+          )}
+
+          {job.city && (
+            <div className="fact">
+              <b>📍 مكان العمل</b>
+              {job.city}
+            </div>
+          )}
+
+          {job.qualification && (
+            <div className="fact">
+              <b>🎓 المؤهل</b>
+              {job.qualification}
+            </div>
+          )}
+
+          {job.jobs_count && (
+            <div className="fact">
+              <b>🔢 عدد الوظائف</b>
+              {job.jobs_count}
+            </div>
+          )}
+
+          <div className="fact">
+            <b>📅 تاريخ النشر</b>
+            {formatDate(
+              job.published_at || job.created_at
+            )}
+          </div>
+
+          {job.expires_at && expiryDate && (
+            <div className="fact">
+              <b>⏳ انتهاء إتاحة الإعلان</b>
+              {formatDate(expiryDate)}
+            </div>
+          )}
         </div>
 
-        {job.category ? (
+        {job.category && (
           <>
-            <div className="block-title">الوظائف المطلوبة</div>
+            <div className="block-title">
+              الوظائف المطلوبة
+            </div>
+
             <ul className="positions-list">
-              {job.category.split('\n').map((line) => line.trim()).filter(Boolean).map((line, i) => (
-                <li key={i}>{line}</li>
-              ))}
+              {job.category
+                .split('\n')
+                .map((line) => line.trim())
+                .filter(Boolean)
+                .map((line, index) => (
+                  <li key={index}>{line}</li>
+                ))}
             </ul>
           </>
-        ) : null}
+        )}
 
-        {job.description ? (
+        {job.description && (
           <>
-            <div className="block-title">تفاصيل الوظيفة</div>
-            <p className="text-block">{job.description}</p>
-          </>
-        ) : null}
+            <div className="block-title">
+              تفاصيل الوظيفة
+            </div>
 
-        {job.requirements ? (
+            <p className="text-block">
+              {job.description}
+            </p>
+          </>
+        )}
+
+        {job.requirements && (
           <>
-            <div className="block-title">الشروط والمتطلبات</div>
-            <p className="text-block">{job.requirements}</p>
-          </>
-        ) : null}
+            <div className="block-title">
+              الشروط والمتطلبات
+            </div>
 
-        {!expired ? <ApplyBox job={job} /> : null}
+            <p className="text-block">
+              {job.requirements}
+            </p>
+          </>
+        )}
+
+        {!expired && <ApplyBox job={job} />}
       </article>
 
       <AdSlot id="job-bottom" />
