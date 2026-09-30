@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 export default function VisitorStats() {
-  const [stats, setStats] = useState(null);
+  const [count, setCount] = useState(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export default function VisitorStats() {
         setError(Boolean(failure));
 
         if (!failure) {
-          setStats(data?.[0] || null);
+          setCount(Number(data?.[0]?.visitors ?? 0));
         }
       } catch {
         if (!stopped) setError(true);
@@ -40,7 +40,7 @@ export default function VisitorStats() {
 
   return (
     <section
-      aria-label="إحصائيات الزوار"
+      aria-label="زوار اليوم"
       style={{
         padding: 20,
         marginBottom: 20,
@@ -50,44 +50,20 @@ export default function VisitorStats() {
     >
       <h3 style={{ margin: '0 0 8px' }}>زوار اليوم</h3>
 
-      {error ? (
-        <p role="status">
-          تعذر تحميل العداد. تأكدي من تفعيل إعداداته وصلاحية
-          حساب الأدمن.
-        </p>
-      ) : (
-        <>
-          <strong
-            aria-live="polite"
-            style={{
-              display: 'block',
-              fontSize: 36,
-              color: 'var(--ink)',
-            }}
-          >
-            {stats
-              ? Number(stats.visitors).toLocaleString('ar-EG')
-              : '…'}
-          </strong>
-
-          {stats && (
-            <p style={{ margin: '4px 0' }}>
-              {stats.visit_day} — بتوقيت مصر
-            </p>
-          )}
-        </>
-      )}
-
-      <p
+      <strong
+        aria-live="polite"
         style={{
-          color: 'var(--muted)',
-          fontSize: 14,
-          marginBottom: 0,
+          display: 'block',
+          fontSize: 36,
+          color: 'var(--ink)',
         }}
       >
-        كل متصفح يُحسب مرة واحدة يوميًا. يبدأ يوم جديد عند
-        منتصف الليل بتوقيت مصر، ويتحدث الرقم كل 30 ثانية.
-      </p>
+        {error
+          ? 'تعذر التحميل'
+          : count === null
+            ? '…'
+            : count.toLocaleString('ar-EG')}
+      </strong>
     </section>
   );
 }
