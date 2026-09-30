@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getJobBySlug } from '../../../lib/jobs';
 import { formatDate, isExpired, safeDecode } from '../../../lib/utils';
+import AdSlot from '../../../components/AdSlot';
 
 export const revalidate = 60;
 
@@ -88,6 +89,8 @@ export default async function JobPage({ params }) {
         <Link href="/">→ رجوع لكل الوظائف</Link>
       </div>
 
+      <AdSlot id="job-top" />
+
       <article className="detail">
         {expired ? <div className="warn">⚠️ هذا الإعلان انتهى موعد التقديم عليه.</div> : null}
 
@@ -107,11 +110,21 @@ export default async function JobPage({ params }) {
           {job.company_name ? <div className="fact"><b>🏢 الشركة</b>{job.company_name}</div> : null}
           {job.city ? <div className="fact"><b>📍 مكان العمل</b>{job.city}</div> : null}
           {job.qualification ? <div className="fact"><b>🎓 المؤهل</b>{job.qualification}</div> : null}
-          {job.category ? <div className="fact"><b>💼 المجال</b>{job.category}</div> : null}
           {job.jobs_count ? <div className="fact"><b>🔢 عدد الوظائف</b>{job.jobs_count}</div> : null}
           <div className="fact"><b>📅 تاريخ النشر</b>{formatDate(job.published_at)}</div>
           {job.expires_at ? <div className="fact"><b>⏳ آخر موعد للتقديم</b>{formatDate(job.expires_at)}</div> : null}
         </div>
+
+        {job.category ? (
+          <>
+            <div className="block-title">الوظائف المطلوبة</div>
+            <ul className="positions-list">
+              {job.category.split('\n').map((line) => line.trim()).filter(Boolean).map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
 
         {job.description ? (
           <>
@@ -129,6 +142,8 @@ export default async function JobPage({ params }) {
 
         {!expired ? <ApplyBox job={job} /> : null}
       </article>
+
+      <AdSlot id="job-bottom" />
     </div>
   );
 }
