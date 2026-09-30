@@ -26,6 +26,7 @@ const EMPTY = {
   other_instructions: '',
   expires_date: '',
   status: 'published',
+  is_featured: false,
 };
 
 const nullIfEmpty = (v) => (typeof v === 'string' && v.trim() === '' ? null : v);
@@ -36,6 +37,7 @@ function toForm(job) {
     if (job[k] !== undefined && job[k] !== null) f[k] = String(job[k]);
   });
   f.expires_date = job.expires_at ? new Date(job.expires_at).toLocaleDateString('en-CA') : '';
+  f.is_featured = !!job.is_featured;
   return f;
 }
 
@@ -116,6 +118,7 @@ export default function AdminPage() {
       other_instructions: nullIfEmpty(form.other_instructions),
       expires_at: form.expires_date ? new Date(form.expires_date + 'T23:59:59').toISOString() : null,
       status: form.status,
+      is_featured: !!form.is_featured,
     };
 
     let error;
@@ -235,6 +238,16 @@ export default function AdminPage() {
               </div>
             </div>
 
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 16px', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
+              <input
+                type="checkbox"
+                checked={!!form.is_featured}
+                onChange={(e) => setForm({ ...form, is_featured: e.target.checked })}
+                style={{ width: 18, height: 18 }}
+              />
+              وظيفة مميزة (هتظهر بشارة حمراء وهتتقدم فوق باقي الوظائف)
+            </label>
+
             <div className="actions">
               <button className="btn btn-sm" type="submit" disabled={saving}>{saving ? 'جاري الحفظ...' : editingId ? 'حفظ التعديلات' : 'نشر الوظيفة'}</button>
               <button className="btn btn-sm btn-ghost" type="button" onClick={() => { setForm(null); setEditingId(null); setMsg(null); }}>إلغاء</button>
@@ -250,7 +263,7 @@ export default function AdminPage() {
               return (
                 <div className="row" key={job.id}>
                   <div>
-                    <div className="t">{job.title}</div>
+                    <div className="t">{job.title} {job.is_featured ? <span className="badge-featured" style={{ marginInlineStart: 6 }}>مميز</span> : null}</div>
                     <div className="s">{job.company_name} — {formatDate(job.published_at)}</div>
                   </div>
                   <div className="actions">
