@@ -179,7 +179,7 @@ export default function AdminPage() {
               <div className="field"><label>اسم الشركة / الجهة *</label><input value={form.company_name} onChange={set('company_name')} /></div>
               <div className="field"><label>المدينة</label><input value={form.city} onChange={set('city')} placeholder="مثال: القاهرة" /></div>
               <div className="field"><label>المؤهل</label><input value={form.qualification} onChange={set('qualification')} placeholder="مثال: بكالوريوس فأعلى" /></div>
-              <div className="field"><label>المجال / التصنيف</label><input value={form.category} onChange={set('category')} placeholder="مثال: إدارية - هندسية" /></div>
+              <div className="field full"><label>الوظائف المطلوبة (اكتبي كل وظيفة في سطر لو أكتر من وظيفة)</label><textarea value={form.category} onChange={set('category')} placeholder={"مثال:\nمحاسب\nمندوب مبيعات\nموظف خدمة عملاء"} /></div>
               <div className="field"><label>عدد الوظائف</label><input inputMode="numeric" value={form.jobs_count} onChange={set('jobs_count')} /></div>
               <div className="field"><label>آخر موعد للتقديم (اختياري)</label><input type="date" value={form.expires_date} onChange={set('expires_date')} /></div>
               <div className="field full"><label>تفاصيل الوظيفة</label><textarea value={form.description} onChange={set('description')} /></div>
