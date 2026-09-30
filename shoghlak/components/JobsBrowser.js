@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import JobCard from './JobCard';
+import AdSlot from './AdSlot';
+import { SITE } from '../lib/site';
 
 export default function JobsBrowser({ jobs, failed, dateText }) {
   const [q, setQ] = useState('');
@@ -17,12 +19,24 @@ export default function JobsBrowser({ jobs, failed, dateText }) {
       )
     : jobs;
 
+  const companiesCount = new Set(jobs.map((j) => j.company_name)).size;
+
   return (
     <>
       <section className="hero">
-        <div className="container">
-          <h1>وظائف <span>اليوم</span></h1>
-          <p>{dateText}</p>
+        <div className="container hero-inner">
+          <div className="hero-icon">
+            <img src="/logo.png" alt="" />
+          </div>
+          <h1>وظائف <span>وفرص عمل</span> يوميًا</h1>
+          <p className="sub">{SITE.description}</p>
+
+          <div className="hero-stats">
+            <span className="hero-stat">📋 {jobs.length} وظيفة منشورة</span>
+            {companiesCount > 0 ? <span className="hero-stat">🏢 {companiesCount} جهة توظيف</span> : null}
+            <span className="hero-stat">✅ التقديم مجاني تمامًا</span>
+          </div>
+
           <div className="search-wrap">
             <input
               type="search"
@@ -31,10 +45,13 @@ export default function JobsBrowser({ jobs, failed, dateText }) {
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
+          <p className="sub" style={{ fontWeight: 500, fontSize: 13, marginTop: 8 }}>{dateText}</p>
         </div>
       </section>
 
       <div className="container">
+        <AdSlot id="home-top" />
+
         <div className="section-title">
           {term ? `نتائج البحث (${filtered.length})` : `أحدث الوظائف (${filtered.length})`}
         </div>
@@ -56,6 +73,8 @@ export default function JobsBrowser({ jobs, failed, dateText }) {
             ))}
           </div>
         )}
+
+        <AdSlot id="home-bottom" />
       </div>
     </>
   );
