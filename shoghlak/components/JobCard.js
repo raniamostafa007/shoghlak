@@ -14,7 +14,10 @@ export default function JobCard({ job }) {
       <div className="card-body">
         <div className="card-head">
           <h3>{job.title}</h3>
-          <span className="badge">{formatDate(job.published_at)}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+            {job.is_featured ? <span className="badge-featured">مميز</span> : null}
+            <span className="badge">{formatDate(job.published_at)}</span>
+          </div>
         </div>
         <p className="company">{job.company_name}</p>
         <div className="chips">
