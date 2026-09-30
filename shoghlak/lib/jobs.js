@@ -1,7 +1,25 @@
 import { supabase } from './supabase';
-import { isExpired } from './utils';
 
-export async function getActiveJobs() {
+const PAGE_SIZE = 12;
+
+export async function getActiveJobs({
+  page = 1,
+  search = '',
+} = {}) {
+  const parsedPage = Number(page);
+
+  const currentPage =
+    Number.isSafeInteger(parsedPage) && parsedPage > 0
+      ? parsedPage
+      : 1;
+
+  // تنظيف علامات قد تؤثر على صيغة البحث.
+  const searchTerm = String(search)
+    .replace(/[,%_*()"\\]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 150);
+
   const now = new Date();
   const nowIso = now.toISOString();
 
@@ -9,13 +27,14 @@ export async function getActiveJobs() {
     now.getTime() - 30 * 24 * 60 * 60 * 1000
   ).toISOString();
 
-  const { data, error } = await supabase
+  const start = (currentPage - 1) * PAGE_SIZE;
+
+  let query = supabase
     .from('jobs')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('status', 'published')
 
-    // عرض الوظائف المنشورة منذ أقل من 30 يوم.
-    // إذا لم يوجد تاريخ نشر، نستخدم تاريخ الإنشاء.
+    // استبعاد الوظائف التي مرّ عليها 30 يومًا.
     .or(
       `published_at.gt.${thirtyDaysAgo},` +
       `and(published_at.is.null,created_at.gt.${thirtyDaysAgo})`
@@ -24,11 +43,31 @@ export async function getActiveJobs() {
     // استبعاد الوظائف التي انتهى موعدها الرسمي.
     .or(
       `expires_at.is.null,expires_at.gt.${nowIso}`
-    )
+    );
 
+  // البحث في جميع الوظائف النشطة قبل تقسيم النتائج.
+  if (searchTerm) {
+    const pattern = `%${searchTerm}%`;
+
+    query = query.or(
+      [
+        `title.ilike.${pattern}`,
+        `company_name.ilike.${pattern}`,
+        `city.ilike.${pattern}`,
+        `category.ilike.${pattern}`,
+        `qualification.ilike.${pattern}`,
+      ].join(',')
+    );
+  }
+
+  const { data, error, count } = await query
     .order('is_featured', { ascending: false })
-    .order('published_at', { ascending: false })
-    .limit(100);
+    .order('published_at', {
+      ascending: false,
+      nullsFirst: false,
+    })
+    .order('id', { ascending: false })
+    .range(start, start + PAGE_SIZE - 1);
 
   if (error) {
     console.error('getActiveJobs error:', error.message);
@@ -36,12 +75,31 @@ export async function getActiveJobs() {
     return {
       jobs: [],
       failed: true,
+      total: 0,
+      totalPages: 0,
+      currentPage,
+      pageSize: PAGE_SIZE,
     };
   }
 
+  const total = count || 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  // لو رقم الصفحة أكبر من الموجود، نعرض آخر صفحة.
+  if (totalPages > 0 && currentPage > totalPages) {
+    return getActiveJobs({
+      page: totalPages,
+      search: searchTerm,
+    });
+  }
+
   return {
-    jobs: (data || []).filter((job) => !isExpired(job)),
+    jobs: data || [],
     failed: false,
+    total,
+    totalPages,
+    currentPage: totalPages === 0 ? 1 : currentPage,
+    pageSize: PAGE_SIZE,
   };
 }
 
@@ -58,7 +116,5 @@ export async function getJobBySlug(slug) {
     return null;
   }
 
-  // الإعلان المنتهي يظل متاحًا بالرابط المباشر
-  // حتى الحذف التلقائي بعد 6 شهور.
   return data;
 }
