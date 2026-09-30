@@ -7,6 +7,7 @@ export async function getActiveJobs() {
     .select('*')
     .eq('status', 'published')
     .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+    .order('is_featured', { ascending: false })
     .order('published_at', { ascending: false })
     .limit(100);
 
